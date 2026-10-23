@@ -1,0 +1,100 @@
+name: Deploy Azure VM
+
+on:
+  push:
+    branches:
+      - main
+
+permissions:
+  contents: read
+
+env:
+  AZURE_CLIENT_ID: ${{ vars.AZURE_CLIENT_ID }}
+  AZURE_TENANT_ID: ${{ vars.AZURE_TENANT_ID }}
+  AZURE_SUBSCRIPTION_ID: ${{ vars.AZURE_SUBSCRIPTION_ID }}
+  AZURE_LOCATION: eastus
+  ADMIN_SSH_PUBLIC_KEY: ${{ vars.ADMIN_SSH_PUBLIC_KEY }}
+  ADMIN_SOURCE_ADDRESS_PREFIX: ${{ vars.ADMIN_SOURCE_ADDRESS_PREFIX }}
+  AZURE_CLIENT_SECRET: ${{ secrets.AZURE_CLIENT_SECRET }}
+
+jobs:
+  what-if:
+    name: Validate and preview changes
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Sign in with Azure service principal
+        uses: azure/login@v2
+        with:
+          client-id: ${{ vars.AZURE_CLIENT_ID }}
+          tenant-id: ${{ vars.AZURE_TENANT_ID }}
+          subscription-id: ${{ vars.AZURE_SUBSCRIPTION_ID }}
+          client-secret: ${{ secrets.AZURE_CLIENT_SECRET }}
+
+      - name: Validate required configuration
+        shell: bash
+        run: |
+          set -euo pipefail
+          : "${AZURE_CLIENT_ID:?Set the AZURE_CLIENT_ID repository variable}"
+          : "${AZURE_TENANT_ID:?Set the AZURE_TENANT_ID repository variable}"
+          : "${AZURE_SUBSCRIPTION_ID:?Set the AZURE_SUBSCRIPTION_ID repository variable}"
+          : "${AZURE_CLIENT_SECRET:?Set the AZURE_CLIENT_SECRET repository secret}"
+          : "${AZURE_LOCATION:?Set the AZURE_LOCATION repository variable}"
+          : "${ADMIN_SSH_PUBLIC_KEY:?Set the ADMIN_SSH_PUBLIC_KEY repository secret}"
+          : "${ADMIN_SOURCE_ADDRESS_PREFIX:?Set the ADMIN_SOURCE_ADDRESS_PREFIX repository variable}"
+          az account set --subscription "$AZURE_SUBSCRIPTION_ID"
+
+      - name: Build Bicep and parameter files
+        working-directory: my-app/infra
+        run: |
+          az bicep install
+          az bicep build --file main.bicep --stdout > /dev/null
+          az bicep build-params --file main.bicepparam --stdout > /dev/null
+
+      - name: Preview deployment
+        working-directory: my-app/infra
+        shell: bash
+        run: |
+          set -euo pipefail
+          az deployment sub what-if \
+            --name "vm-whatif-${GITHUB_RUN_ID}" \
+            --location "$AZURE_LOCATION" \
+            --template-file main.bicep \
+            --parameters main.bicepparam \
+              location="$AZURE_LOCATION" \
+              adminSourceAddressPrefix="$ADMIN_SOURCE_ADDRESS_PREFIX" \
+            --result-format FullResourcePayloads
+
+  deploy:
+    name: Deploy VM
+    needs: what-if
+    runs-on: ubuntu-latest
+    environment: azure-production
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Sign in with Azure service principal
+        uses: azure/login@v2
+        with:
+          client-id: ${{ vars.AZURE_CLIENT_ID }}
+          tenant-id: ${{ vars.AZURE_TENANT_ID }}
+          subscription-id: ${{ vars.AZURE_SUBSCRIPTION_ID }}
+          client-secret: ${{ secrets.AZURE_CLIENT_SECRET }}
+
+      - name: Deploy Bicep template
+        working-directory: my-app/infra
+        shell: bash
+        run: |
+          set -euo pipefail
+          az bicep install
+          az account set --subscription "$AZURE_SUBSCRIPTION_ID"
+          az deployment sub create \
+            --name "vm-deployment-${GITHUB_RUN_ID}" \
+            --location "$AZURE_LOCATION" \
+            --template-file main.bicep \
+            --parameters main.bicepparam \
+              location="$AZURE_LOCATION" \
+              adminSourceAddressPrefix="$ADMIN_SOURCE_ADDRESS_PREFIX"
