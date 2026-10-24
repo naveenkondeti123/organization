@@ -1,48 +1,17 @@
-@description('Azure region for the virtual machine and networking resources.')
 param location string
-
-@description('Virtual machine name.')
-@minLength(1)
-@maxLength(64)
 param vmName string
-
-@description('Administrator account name for the Linux virtual machine.')
 param adminUsername string
-
-@description('SSH public key for administrator access.')
 @secure()
 param adminSshPublicKey string
-
-@description('CIDR range allowed to connect to SSH (port 22).')
 param adminSourceAddressPrefix string
-
-@description('Azure VM size.')
 param vmSize string
-
-@description('Virtual network address space.')
 param virtualNetworkAddressPrefix string
-
-@description('Subnet address space.')
 param subnetAddressPrefix string
-
-@description('OS image publisher.')
 param vmImagePublisher string
-
-@description('OS image offer.')
 param vmImageOffer string
-
-@description('OS image SKU.')
 param vmImageSku string
-
-@description('OS image version.')
 param vmImageVersion string
-
-@description('OS disk size in GB.')
-@minValue(30)
-@maxValue(4095)
 param osDiskSizeGB int
-
-@description('Managed disk storage account type.')
 param osDiskStorageAccountType string
 
 var networkSecurityGroupName = '${vmName}-nsg'

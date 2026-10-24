@@ -1,5 +1,4 @@
 targetScope = 'subscription'
-param location string
 @minLength(1)
 @maxLength(64)
 param vmName string
@@ -24,12 +23,27 @@ param osDiskSizeGB int
 
 @description('Managed disk storage account type.')
 param osDiskStorageAccountType string
+param storageAccountName string
+param location string = 'eastus'
+param skuName string = 'Standard_LRS'
 
 var resourceGroupName = 'demo-rg'
 
 resource demoResourceGroup 'Microsoft.Resources/resourceGroups@2024-03-01' = {
   name: resourceGroupName
   location: location
+}
+
+resource storageAccount 'Microsoft.Storage/storageAccounts@2024-03-01' = {
+  name: storageAccountName
+  location: location
+  sku: {
+    name: skuName
+  }
+  kind: 'StorageV2'
+  properties: {
+    accessTier: 'Hot'
+  }
 }
 
 module vm 'modules/vm.bicep' = {
