@@ -1,4 +1,4 @@
-name: Deploy Azure bicep 
+name: Deploy Azure bicep
 
 on:
   push:
