@@ -1,4 +1,4 @@
-name: Deploy Azure bicep
+name: Deploy Azure bicep 
 
 on:
   push:
@@ -35,7 +35,7 @@ jobs:
         uses: azure/arm-deploy@v2
         with:
           subscriptionId: ${{ vars.AZURE_SUBSCRIPTION_ID }}
-          resourceGroupName: demo-rg
+          resourceGroupName: bicep-deploy
           template: my-app/infra/main.bicep
           parameters: my-app/infra/main.bicepparam
 
