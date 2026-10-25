@@ -27,7 +27,7 @@ param storageAccountName string
 param location string = 'eastus'
 param skuName string = 'Standard_LRS'
 
-var resourceGroupName = 'demo-rg'
+var resourceGroupName = 'bicep-deploy'
 
 resource demoResourceGroup 'Microsoft.Resources/resourceGroups@2024-03-01' = {
   name: resourceGroupName
